@@ -37,11 +37,35 @@ class LoginView(APIView):
         user = authenticate(email=email, password=password)
         if user is not None:
             refresh = RefreshToken.for_user(user)
-            response = Response()
-            response.set_cookie(key='jwt-auth', value=str(refresh.access_token), httponly=True)
-            response.data = {"message": "Inicio de sesión exitoso"}
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+
+            response = Response({"message": "Inicio de sesión exitoso"})
+
+            # Access token
+            response.set_cookie(
+                key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+                value=access_token,
+                httponly=True,
+                samesite=settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax'),
+                secure=settings.SIMPLE_JWT.get('AUTH_COOKIE_SECURE', False),
+                path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/'),
+            )
+
+            # Refresh token
+            response.set_cookie(
+                key=settings.SIMPLE_JWT.get('AUTH_COOKIE_REFRESH', 'jwt-refresh'),
+                value=refresh_token,
+                httponly=True,
+                samesite=settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax'),
+                secure=settings.SIMPLE_JWT.get('AUTH_COOKIE_SECURE', False),
+                path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/'),
+            )
+
             return response
+
         return Response({"error": "Credenciales inválidas"}, status=status.HTTP_401_UNAUTHORIZED)
+
     
 class LogoutView(APIView):
     def post(self, request):
@@ -113,17 +137,31 @@ class GoogleOAuthView(APIView):
 
         # JWT interno (SimpleJWT)
         refresh = RefreshToken.for_user(user)
-        access = str(refresh.access_token)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
 
         response = Response({"message": "Inicio de sesión exitoso"})
+
+        # Access token
         response.set_cookie(
             key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-            value=access,
+            value=access_token,
             httponly=True,
             samesite=settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax'),
             secure=settings.SIMPLE_JWT.get('AUTH_COOKIE_SECURE', False),
             path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/'),
         )
+
+        # Refresh token
+        response.set_cookie(
+            key=settings.SIMPLE_JWT.get('AUTH_COOKIE_REFRESH', 'jwt-refresh'),
+            value=refresh_token,
+            httponly=True,
+            samesite=settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax'),
+            secure=settings.SIMPLE_JWT.get('AUTH_COOKIE_SECURE', False),
+            path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/'),
+        )
+
         return response
 
 
@@ -153,3 +191,72 @@ class DebugUserView(APIView):
             return Response({"error": str(e)}, status=401)
         except Exception as e:
             return Response({"error": "Error interno"}, status=500)
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+
+class TokenObtainPairView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        user = authenticate(email=email, password=password)
+
+        if not user:
+            return Response({"error": "Credenciales inválidas"}, status=401)
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        response = Response({"message": "Token emitido"})
+
+        response.set_cookie(
+            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+            value=access_token,
+            httponly=True,
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
+        )
+        response.set_cookie(
+            key=settings.SIMPLE_JWT.get('AUTH_COOKIE_REFRESH', 'jwt-refresh'),
+            value=refresh_token,
+            httponly=True,
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
+        )
+        return response
+
+
+class TokenRefreshView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get('jwt-refresh')
+        if not refresh_token:
+            return Response({"error": "No se encontró refresh token"}, status=401)
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            access_token = str(refresh.access_token)
+        except (TokenError, InvalidToken):
+            return Response({"error": "Refresh token inválido o expirado"}, status=401)
+
+        response = Response({"message": "Token renovado"})
+        response.set_cookie(
+            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
+            value=access_token,
+            httponly=True,
+            secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+            samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE'],
+            path=settings.SIMPLE_JWT['AUTH_COOKIE_PATH'],
+        )
+        return response

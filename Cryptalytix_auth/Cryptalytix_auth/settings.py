@@ -148,6 +148,9 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_PATH': '/',
     'AUTH_COOKIE_DOMAIN': 'localhost',
     'AUTH_COOKIE_SAMESITE': 'None',  # Cambiar a 'Strict' en producción
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_COOKIE_REFRESH': 'jwt-refresh',
     'AUTH_COOKIE_OPTIONS': {
         'httponly': True,
         'secure': True,
