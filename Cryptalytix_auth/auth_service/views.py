@@ -83,9 +83,11 @@ class LogoutView(APIView):
         response.status_code = 200
         return response
     
-from rest_framework.permissions import AllowAny
+
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.utils.text import slugify
+import uuid
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GoogleOAuthView(APIView):
@@ -130,7 +132,9 @@ class GoogleOAuthView(APIView):
         if not email:
             return Response({"error": "No se encontró correo en el token"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user, created = User.objects.get_or_create(email=email)
+        username = slugify(email.split("@")[0]) or str(uuid.uuid4())[:8]
+
+        user, created = User.objects.get_or_create(email=email, defaults={"username": username})
         if created:
             user.set_unusable_password()
             user.save()
@@ -185,7 +189,8 @@ class DebugUserView(APIView):
                 "user_id": user.id,
                 "email": user.email,
                 "username": user.username,
-                "token_valid": True
+                "token_valid": True,
+                "token": token 
             })
         except (InvalidToken, TokenError) as e:
             return Response({"error": str(e)}, status=401)
