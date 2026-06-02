@@ -13,7 +13,7 @@ SECRET_KEY = config("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.100.7']
 
 
 # Application definition
@@ -150,7 +150,7 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_SECURE': True,  # Cambiar a True en producción
     'AUTH_COOKIE_HTTP_ONLY': True,
     'AUTH_COOKIE_PATH': '/',
-    'AUTH_COOKIE_DOMAIN': 'localhost',
+    'AUTH_COOKIE_DOMAIN': None,
     'AUTH_COOKIE_SAMESITE': 'None',  # Cambiar a 'Strict' en producción
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -184,12 +184,14 @@ CSRF_COOKIE_HTTPONLY=True
 CSRF_TRUSTED_ORIGINS = [
      "https://localhost:5173",
      "https://127.0.0.1:5173",
-     "https://127.0.0.1:8000",  # Agrega aquí todas las URL permitidas
+     "https://192.168.100.7:5173",
+     "https://127.0.0.1:8000",
 ]
 CORS_ALLOWED_ORIGINS = [
      "https://localhost:5173",
      "https://127.0.0.1:5173",
-     "https://127.0.0.1:8000",  # Reemplaza con la URL de tu frontend
+     "https://192.168.100.7:5173",
+     "https://127.0.0.1:8000",
 ]
 
 # Agrega estas líneas al final de settings.py
