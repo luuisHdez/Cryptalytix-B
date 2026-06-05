@@ -150,7 +150,7 @@ SIMPLE_JWT = {
     'AUTH_COOKIE_SECURE': True,  # Cambiar a True en producción
     'AUTH_COOKIE_HTTP_ONLY': True,
     'AUTH_COOKIE_PATH': '/',
-    'AUTH_COOKIE_DOMAIN': None,
+    'AUTH_COOKIE_DOMAIN': 'localhost',
     'AUTH_COOKIE_SAMESITE': 'None',  # Cambiar a 'Strict' en producción
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -172,8 +172,6 @@ REST_FRAMEWORK = {
     
 }
 
-
-GOOGLE_REDIRECT_URI = "https://localhost:5173"
 
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 

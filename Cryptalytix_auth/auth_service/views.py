@@ -7,7 +7,6 @@ from django.contrib.auth import authenticate
 from django.middleware.csrf import get_token
 from django.conf import settings  # Agrega esta línea
 from django.contrib.auth.models import User
-import requests
 from decouple import config
 
 from django.middleware.csrf import get_token
@@ -83,91 +82,6 @@ class LogoutView(APIView):
         response.status_code = 200
         return response
     
-
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.utils.text import slugify
-import uuid
-
-@method_decorator(csrf_exempt, name='dispatch')
-class GoogleOAuthView(APIView):
-    authentication_classes = []
-    permission_classes = []
-
-    def post(self, request):
-        code = request.data.get('code')
-        GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID")
-        GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET")
-        if not code:
-            return Response({"error": "Authorization code no recibido"}, status=status.HTTP_400_BAD_REQUEST)
-        
-
-        # Intercambiar authorization code por tokens
-        token_url = "https://oauth2.googleapis.com/token"
-        data = {
-            "code": code,
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,  # asegúrate de que coincida con el frontend
-            "grant_type": "authorization_code",
-        }
-
-        token_response = requests.post(token_url, data=data)
-        if token_response.status_code != 200:
-            return Response({"error": "Error al obtener tokens de Google"}, status=status.HTTP_400_BAD_REQUEST)
-
-        tokens = token_response.json()
-        id_token = tokens.get("id_token")
-        if not id_token:
-            return Response({"error": "ID token no recibido"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Verificar id_token con Google
-        verify_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
-        verify_response = requests.get(verify_url)
-        if verify_response.status_code != 200:
-            return Response({"error": "ID token inválido"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user_info = verify_response.json()
-        email = user_info.get('email')
-        if not email:
-            return Response({"error": "No se encontró correo en el token"}, status=status.HTTP_400_BAD_REQUEST)
-
-        username = slugify(email.split("@")[0]) or str(uuid.uuid4())[:8]
-
-        user, created = User.objects.get_or_create(email=email, defaults={"username": username})
-        if created:
-            user.set_unusable_password()
-            user.save()
-
-        # JWT interno (SimpleJWT)
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-        refresh_token = str(refresh)
-
-        response = Response({"message": "Inicio de sesión exitoso"})
-
-        # Access token
-        response.set_cookie(
-            key=settings.SIMPLE_JWT['AUTH_COOKIE'],
-            value=access_token,
-            httponly=True,
-            samesite=settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax'),
-            secure=settings.SIMPLE_JWT.get('AUTH_COOKIE_SECURE', False),
-            path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/'),
-        )
-
-        # Refresh token
-        response.set_cookie(
-            key=settings.SIMPLE_JWT.get('AUTH_COOKIE_REFRESH', 'jwt-refresh'),
-            value=refresh_token,
-            httponly=True,
-            samesite=settings.SIMPLE_JWT.get('AUTH_COOKIE_SAMESITE', 'Lax'),
-            secure=settings.SIMPLE_JWT.get('AUTH_COOKIE_SECURE', False),
-            path=settings.SIMPLE_JWT.get('AUTH_COOKIE_PATH', '/'),
-        )
-
-        return response
-
 
     
 from rest_framework.permissions import IsAuthenticated
